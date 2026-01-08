@@ -1,12 +1,16 @@
 /// Excel Export Service - Alternative Impedance
 /// Based on exportAllToExcel in NewImpedanceAdapter.kt
+/// Supports both mobile (file save + share) and web (download)
 
-import 'dart:io';
+import 'dart:convert';
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../utils/constants.dart';
+
+// Conditional imports for platform-specific functionality
+import 'excel_service_stub.dart'
+    if (dart.library.html) 'excel_service_web.dart'
+    if (dart.library.io) 'excel_service_mobile.dart' as platform_excel;
 
 class ExcelService {
   static final ExcelService _instance = ExcelService._internal();
@@ -71,24 +75,12 @@ class ExcelService {
       sheet.setColumnWidth(1, 20);
       sheet.setColumnWidth(2, 20);
 
-      // Save file
+      // Save file using platform-specific implementation
       final outputFileName = fileName ?? '측정_저항_비교_값_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-      
-      if (kIsWeb) {
-        // For web, we can't save to file system
-        debugPrint('Excel export not supported on web');
-        return null;
-      }
-
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/$outputFileName';
       final fileBytes = excel.save();
       
       if (fileBytes != null) {
-        final file = File(filePath);
-        await file.writeAsBytes(fileBytes);
-        debugPrint('Excel file saved: $filePath');
-        return filePath;
+        return await platform_excel.saveExcelFile(outputFileName, fileBytes);
       }
 
       return null;
@@ -125,37 +117,26 @@ class ExcelService {
       final measurementSheet = excel['Measurements'];
       measurementSheet.appendRow([
         TextCellValue('채널'),
-        TextCellValue('주파수 (Hz)'),
+        TextCellValue('저항값 (Ω)'),
         TextCellValue('임피던스'),
       ]);
 
       for (int i = 1; i <= 32; i++) {
-        final frequency = AppConstants.channelFrequencies[(i - 1) % 16];
+        final resistance = AppConstants.channelResistances[(i - 1) % 16];
         final impedance = measurements[i] ?? 0.0;
         measurementSheet.appendRow([
           IntCellValue(i),
-          IntCellValue(frequency),
+          IntCellValue(resistance),
           DoubleCellValue(impedance),
         ]);
       }
 
-      // Save file
+      // Save file using platform-specific implementation
       final outputFileName = fileName ?? '캘리브레이션_${innerID}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-      
-      if (kIsWeb) {
-        debugPrint('Excel export not supported on web');
-        return null;
-      }
-
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/$outputFileName';
       final fileBytes = excel.save();
       
       if (fileBytes != null) {
-        final file = File(filePath);
-        await file.writeAsBytes(fileBytes);
-        debugPrint('Excel file saved: $filePath');
-        return filePath;
+        return await platform_excel.saveExcelFile(outputFileName, fileBytes);
       }
 
       return null;
@@ -165,24 +146,9 @@ class ExcelService {
     }
   }
 
-  /// Share Excel file
+  /// Share Excel file (mobile only)
   Future<bool> shareExcelFile(String filePath) async {
-    try {
-      if (kIsWeb) {
-        debugPrint('Share not supported on web');
-        return false;
-      }
-
-      final result = await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Alternative Impedance 측정 데이터',
-      );
-
-      return result.status == ShareResultStatus.success;
-    } catch (e) {
-      debugPrint('Error sharing Excel file: $e');
-      return false;
-    }
+    return await platform_excel.shareExcelFile(filePath);
   }
 
   /// Export and share in one step

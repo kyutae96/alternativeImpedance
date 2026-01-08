@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/impedance_provider.dart';
-import '../models/impedance_data.dart';
+import '../services/ble_service_interface.dart';
 
 class BleScanDialog extends StatefulWidget {
   const BleScanDialog({super.key});

@@ -1,6 +1,7 @@
 /// Impedance Data Models
 /// Based on original Android models: ImpedanceDataModel, ImpedanceFirebaseDataModel, NewImpedanceFirebaseDataModel
 
+
 import '../utils/constants.dart';
 
 /// Firebase data model for storing calibration parameters
@@ -232,44 +233,3 @@ class DiagnosedMeasurement {
   }
 }
 
-/// BLE device info for scanning
-class BleDeviceInfo {
-  final String name;
-  final String address;
-  final int rssi;
-
-  BleDeviceInfo({
-    required this.name,
-    required this.address,
-    this.rssi = 0,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is BleDeviceInfo &&
-          runtimeType == other.runtimeType &&
-          address == other.address;
-
-  @override
-  int get hashCode => address.hashCode;
-}
-
-/// BLE Connection State
-enum BleConnectionState {
-  disconnected,
-  connecting,
-  connected,
-  discovering,
-  ready,
-  error,
-}
-
-/// BLE Program State
-enum BleProgramState {
-  notStarted,
-  started,
-  measuring,
-  completed,
-  error,
-}

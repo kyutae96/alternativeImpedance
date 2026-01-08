@@ -4,11 +4,12 @@
 import 'package:flutter/foundation.dart';
 import '../models/impedance_data.dart';
 import '../services/ble_service.dart';
+import '../services/ble_service_interface.dart';
 import '../services/firebase_service.dart';
 import '../utils/constants.dart';
 
 class ImpedanceProvider extends ChangeNotifier {
-  final BleService _bleService = BleService();
+  final BleServiceInterface _bleService = BleService.instance;
   final FirebaseService _firebaseService = FirebaseService();
 
   // BLE State
