@@ -174,12 +174,13 @@ class ElectrodeStatusGrid extends StatelessWidget {
 
   String _getStatus(double? value) {
     if (value == null) return 'unknown';
+    
+    // minThreshold/maxThreshold는 캘리브레이션에서 가져온 값이어야 함
+    // 값이 없으면 판정 불가
+    if (minThreshold == null || maxThreshold == null) return 'unknown';
 
-    final min = minThreshold ?? AppConstants.defaultMinThreshold;
-    final max = maxThreshold ?? AppConstants.defaultMaxThreshold;
-
-    if (value < min) return 'short';
-    if (value > max) return 'open';
+    if (value < minThreshold!) return 'short';
+    if (value > maxThreshold!) return 'open';
     return 'normal';
   }
 

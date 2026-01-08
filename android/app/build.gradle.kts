@@ -1,13 +1,17 @@
+// ✅ CRITICAL: Required imports for signing configuration
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
+    // id("com.google.gms.google-services") // Disabled - no google-services.json
 }
 
 android {
-    namespace = "com.todoc.alternative_impedance"
+    namespace = "com.impedancemonitor.monitor"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,10 +26,10 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.todoc.alternative_impedance"
+        applicationId = "com.impedancemonitor.monitor"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 34
         multiDexEnabled = true
         versionCode = flutter.versionCode
@@ -44,3 +48,5 @@ android {
 flutter {
     source = "../.."
 }
+
+

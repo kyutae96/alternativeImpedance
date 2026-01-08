@@ -69,18 +69,17 @@ class AppConstants {
     16: 15000,
   };
 
-  // Channel frequency values (1-16 and 17-32 use same frequencies)
-  static const List<int> channelFrequencies = [
+  // Channel resistance values in Ohms (1-16 and 17-32 use same resistance values)
+  static const List<int> channelResistances = [
     300, 500, 1000, 1500, 2000, 2500, 3000, 4000,
     5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000,
   ];
+  
+  // Alias for backward compatibility
+  static const List<int> channelFrequencies = channelResistances;
 
   // Admin Password for Settings
   static const String adminPassword = 'todoc09876';
-
-  // Diagnosis Thresholds
-  static const double defaultMinThreshold = 2.0;
-  static const double defaultMaxThreshold = 8.0;
 
   // Impedance Offset
   static const int impedanceOffset = 2048;

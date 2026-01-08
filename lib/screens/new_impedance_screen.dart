@@ -1,6 +1,6 @@
-/// New Impedance Screen - Alternative Impedance
-/// Based on NewImpedanceActivity.kt from original Android app
-/// Shows diagnosed measurements and allows saving/exporting
+// New Impedance Screen - Alternative Impedance
+// Based on NewImpedanceActivity.kt from original Android app
+// Shows diagnosed measurements and allows saving/exporting
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +8,9 @@ import '../providers/impedance_provider.dart';
 import '../models/impedance_data.dart';
 import '../services/firebase_service.dart';
 import '../services/excel_service.dart';
+import '../services/cache_service.dart';
 import '../utils/constants.dart';
+import '../utils/toast_manager.dart';
 
 class NewImpedanceScreen extends StatefulWidget {
   final VoidCallback? onNavigateToMeasurement;
@@ -714,6 +716,8 @@ class _NewImpedanceScreenState extends State<NewImpedanceScreen>
                         fontWeight: FontWeight.w700,
                       ),
                 ),
+                const Spacer(),
+                _buildFormulaTooltipButton(context),
               ],
             ),
           ),
@@ -733,7 +737,7 @@ class _NewImpedanceScreenState extends State<NewImpedanceScreen>
                             fontWeight: FontWeight.w700, fontSize: 13))),
                 Expanded(
                     flex: 2,
-                    child: Text('주파수',
+                    child: Text('저항값',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 13))),
@@ -919,7 +923,7 @@ class _NewImpedanceScreenState extends State<NewImpedanceScreen>
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          '주파수: ${measurement.frequency} Hz',
+          '저항값: ${measurement.frequency} Ω',
           style: TextStyle(color: Colors.grey.shade600),
         ),
         trailing: Column(
@@ -1055,7 +1059,7 @@ class _NewImpedanceScreenState extends State<NewImpedanceScreen>
                         Icon(Icons.cloud_upload_rounded, color: Colors.white),
                         SizedBox(width: 8),
                         Text(
-                          'Firebase 저장',
+                          '저장',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
@@ -1198,7 +1202,7 @@ class _NewImpedanceScreenState extends State<NewImpedanceScreen>
                   color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(width: 12),
-            const Text('Firebase 저장'),
+            const Text('저장'),
           ],
         ),
         content: Column(
@@ -1264,24 +1268,104 @@ class _NewImpedanceScreenState extends State<NewImpedanceScreen>
 
     if (confirm == true) {
       final success = await provider.saveNewImpedanceToFirebase(measurementsMap);
-      _showMessage(success ? '저장이 완료되었습니다.' : '저장에 실패했습니다.');
+      if (success) {
+        cacheService.invalidateImpedanceCache();
+        toastManager.showSuccess(context, '저장이 완료되었습니다.');
+      } else {
+        toastManager.showError(context, '저장에 실패했습니다.');
+      }
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
+    toastManager.showInfo(context, message);
+  }
+  
+  Widget _buildFormulaTooltipButton(BuildContext context) {
+    return IconButton(
+      icon: Icon(Icons.help_outline, color: Colors.grey.shade600, size: 22),
+      tooltip: '계산 방법',
+      onPressed: () => _showFormulaDialog(context),
+    );
+  }
+  
+  void _showFormulaDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
           children: [
-            const Icon(Icons.info_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
+            Icon(Icons.calculate, color: Theme.of(context).primaryColor),
+            const SizedBox(width: 8),
+            const Text('결과값 계산 방법', style: TextStyle(fontSize: 18)),
           ],
         ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildFormulaSection(
+                '1. 캘리브레이션 (기울기/절편)',
+                [
+                  'Slope = (R_Max - R_Min) / (Imp_Max - Imp_Min)',
+                  'Intercept = R_Min - (Slope × Imp_Min)',
+                ],
+                'R: 저항값(Ω), Imp: 임피던스 Raw값',
+              ),
+              const Divider(height: 24),
+              _buildFormulaSection(
+                '2. 결과값 계산',
+                ['결과값(Ω) = Slope × RawValue + Intercept'],
+                'RawValue: BLE에서 받은 임피던스 raw 값',
+              ),
+              const Divider(height: 24),
+              _buildFormulaSection(
+                '3. 상태 판정',
+                [
+                  '• 정상: Min ≤ RawValue ≤ Max',
+                  '• 쇼트: RawValue < Min (전극 단락)',
+                  '• 오픈: RawValue > Max (전극 개방)',
+                ],
+                'Min/Max: 캘리브레이션 시 선택한 포인트의 임피던스 값\n(해당 내부기 ID의 캘리브레이션 데이터에서 조회)',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
       ),
+    );
+  }
+  
+  Widget _buildFormulaSection(String title, List<String> formulas, String description) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: formulas.map((f) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(f, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+            )).toList(),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(description, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+      ],
     );
   }
 }

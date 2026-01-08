@@ -1,10 +1,12 @@
-/// Settings Screen - Alternative Impedance
-/// Includes measurement parameters with admin password protection
+// Settings Screen - Alternative Impedance
+// Includes measurement parameters with admin password protection
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/impedance_provider.dart';
 import '../utils/constants.dart';
+import '../utils/toast_manager.dart';
+import '../utils/font_size_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -95,9 +97,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Frequency Mapping Section
+            // Resistance Mapping Section
             _buildSection(
-              title: '주파수 매핑 (채널 1-16)',
+              title: '저항값 매핑 (채널 1-16)',
               icon: Icons.waves,
               children: [
                 _buildFrequencyTable(),
@@ -109,6 +111,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildCalculationMethodSection(),
             const SizedBox(height: 16),
 
+            // Font Size Section (맨 아래로 이동)
+            _buildFontSizeSection(),
+            const SizedBox(height: 24),
+
             // Copyright
             Center(
               child: Text(
@@ -117,6 +123,184 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontSizeSection() {
+    return Consumer<FontSizeProvider>(
+      builder: (context, fontSizeProvider, child) {
+        return Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.text_fields, color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '글자 크기',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        Text(
+                          '현재: ${fontSizeProvider.getFontScaleLabel()}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Font size preview
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Text(
+                        '글자 크기 미리보기 - Alternative Impedance 측정 앱',
+                        style: TextStyle(
+                          fontSize: 14 * fontSizeProvider.fontScale,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Size options
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildFontSizeOption(
+                            context,
+                            fontSizeProvider,
+                            '작게',
+                            FontSizeProvider.scaleSmall,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildFontSizeOption(
+                            context,
+                            fontSizeProvider,
+                            '보통',
+                            FontSizeProvider.scaleNormal,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildFontSizeOption(
+                            context,
+                            fontSizeProvider,
+                            '크게',
+                            FontSizeProvider.scaleLarge,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildFontSizeOption(
+                            context,
+                            fontSizeProvider,
+                            '매우 크게',
+                            FontSizeProvider.scaleExtraLarge,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Slider for fine control
+                    Row(
+                      children: [
+                        const Icon(Icons.text_decrease, size: 18, color: Colors.grey),
+                        Expanded(
+                          child: Slider(
+                            value: fontSizeProvider.fontScale,
+                            min: 0.8,
+                            max: 1.4,
+                            divisions: 12,
+                            label: '${(fontSizeProvider.fontScale * 100).round()}%',
+                            onChanged: (value) {
+                              fontSizeProvider.setFontScale(value);
+                            },
+                          ),
+                        ),
+                        const Icon(Icons.text_increase, size: 18, color: Colors.grey),
+                      ],
+                    ),
+                    Text(
+                      '${(fontSizeProvider.fontScale * 100).round()}%',
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFontSizeOption(
+    BuildContext context,
+    FontSizeProvider provider,
+    String label,
+    double scale,
+  ) {
+    final isSelected = (provider.fontScale - scale).abs() < 0.05;
+    return InkWell(
+      onTap: () {
+        provider.setFontScale(scale);
+        _showMessage('글자 크기가 "$label"(으)로 변경되었습니다');
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade300,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.text_fields,
+              size: 16 + (scale - 0.85) * 10,
+              color: isSelected ? Colors.white : Colors.grey.shade700,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -308,9 +492,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: BoxDecoration(color: Theme.of(context).primaryColor.withValues(alpha: 0.1)),
             children: const [
               TableCell(child: Padding(padding: EdgeInsets.all(8), child: Text('CH', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)))),
-              TableCell(child: Padding(padding: EdgeInsets.all(8), child: Text('주파수', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)))),
+              TableCell(child: Padding(padding: EdgeInsets.all(8), child: Text('저항값', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)))),
               TableCell(child: Padding(padding: EdgeInsets.all(8), child: Text('CH', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)))),
-              TableCell(child: Padding(padding: EdgeInsets.all(8), child: Text('주파수', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)))),
+              TableCell(child: Padding(padding: EdgeInsets.all(8), child: Text('저항값', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)))),
             ],
           ),
           ...List.generate(8, (index) {
@@ -319,9 +503,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return TableRow(
               children: [
                 TableCell(child: Padding(padding: const EdgeInsets.all(8), child: Text('$ch1', textAlign: TextAlign.center))),
-                TableCell(child: Padding(padding: const EdgeInsets.all(8), child: Text('${AppConstants.channelFrequencies[ch1 - 1]} Hz', textAlign: TextAlign.center))),
+                TableCell(child: Padding(padding: const EdgeInsets.all(8), child: Text('${AppConstants.channelResistances[ch1 - 1]} Ω', textAlign: TextAlign.center))),
                 TableCell(child: Padding(padding: const EdgeInsets.all(8), child: Text('$ch2', textAlign: TextAlign.center))),
-                TableCell(child: Padding(padding: const EdgeInsets.all(8), child: Text('${AppConstants.channelFrequencies[ch2 - 1]} Hz', textAlign: TextAlign.center))),
+                TableCell(child: Padding(padding: const EdgeInsets.all(8), child: Text('${AppConstants.channelResistances[ch2 - 1]} Ω', textAlign: TextAlign.center))),
               ],
             );
           }),
@@ -426,12 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    toastManager.showInfo(context, message);
   }
 
   /// Firebase Settings Section with collection selection
@@ -635,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Slope (기울기) = (Max - Min) / (fMax - fMin)',
                     'Intercept (절편) = Min - Slope × fMin',
                   ],
-                  description: 'Min/Max: 선택한 포인트의 임피던스 값\nfMin/fMax: 선택한 포인트의 주파수',
+                  description: 'Min/Max: 선택한 포인트의 임피던스 값\nfMin/fMax: 선택한 포인트의 저항값',
                 ),
                 const SizedBox(height: 16),
                 
@@ -643,11 +822,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: '진단 판정 기준',
                   icon: Icons.assessment,
                   formulas: [
-                    '정상: Min ≤ 측정값 ≤ Max',
-                    '쇼트: 측정값 < Min (${AppConstants.defaultMinThreshold})',
-                    '오픈: 측정값 > Max (${AppConstants.defaultMaxThreshold})',
+                    '정상: Min ≤ RawValue ≤ Max',
+                    '쇼트: RawValue < Min (전극 단락)',
+                    '오픈: RawValue > Max (전극 개방)',
                   ],
-                  description: '캘리브레이션 데이터 기반 또는 기본 임계값 사용',
+                  description: 'Min/Max: 캘리브레이션 시 선택한 포인트의 임피던스 값',
                 ),
               ],
             ),

@@ -1,5 +1,5 @@
-/// BLE Status Card Widget
-/// Shows current BLE connection status with modern UI
+// BLE Status Card Widget
+// Shows current BLE connection status with modern UI
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +16,10 @@ class BleStatusCard extends StatelessWidget {
     this.onDisconnectPressed,
   });
 
+  // BLE 연결 상태 색상 - 파란색
+  static const Color _connectedColor = Color(0xFF3B82F6); // Blue
+  static const Color _connectedColorDark = Color(0xFF2563EB); // Dark Blue
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ImpedanceProvider>(context);
@@ -26,13 +30,13 @@ class BleStatusCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with gradient background
+          // Header with gradient background - 연결시 파란색
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isConnected
-                    ? [const Color(0xFF10B981), const Color(0xFF059669)]
+                    ? [_connectedColor, _connectedColorDark] // 파란색으로 변경
                     : [const Color(0xFF64748B), const Color(0xFF475569)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -121,18 +125,18 @@ class BleStatusCard extends StatelessWidget {
                 
                 const SizedBox(height: 16),
                 
-                // Program status chip
+                // Program status chip - 파란색으로 변경
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: provider.isProgrammed
-                        ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                        ? _connectedColor.withValues(alpha: 0.1)
                         : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: provider.isProgrammed
-                          ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                          ? _connectedColor.withValues(alpha: 0.3)
                           : Colors.grey.shade300,
                     ),
                   ),
@@ -145,7 +149,7 @@ class BleStatusCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: provider.isProgrammed
-                              ? const Color(0xFF10B981)
+                              ? _connectedColor
                               : Colors.grey.shade400,
                         ),
                       ),
@@ -154,7 +158,7 @@ class BleStatusCard extends StatelessWidget {
                         provider.isProgrammed ? '프로그램 연결됨' : '프로그램 연결 안됨',
                         style: TextStyle(
                           color: provider.isProgrammed
-                              ? const Color(0xFF059669)
+                              ? _connectedColorDark
                               : Colors.grey.shade600,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,

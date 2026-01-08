@@ -1,16 +1,31 @@
-/// Alternative Impedance - Main Entry Point
-/// Flutter reimplementation of the Android Alternative Impedance app
+// Alternative Impedance - Main Entry Point
+// Flutter reimplementation of the Android Alternative Impedance app
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/impedance_provider.dart';
 import 'screens/home_screen.dart';
 import 'utils/constants.dart';
+import 'utils/font_size_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set fullscreen mode (immersive)
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.immersiveSticky,
+    overlays: [],
+  );
+  
+  // Set preferred orientations
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+    DeviceOrientation.portraitUp,
+  ]);
   
   // Initialize Firebase
   await Firebase.initializeApp(
@@ -31,19 +46,22 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ImpedanceProvider()),
+        ChangeNotifierProvider(create: (_) => FontSizeProvider()),
       ],
-      child: MaterialApp(
-        title: 'Alternative Impedance',
-        debugShowCheckedModeBanner: false,
-        theme: _buildLightTheme(),
-        darkTheme: _buildDarkTheme(),
-        themeMode: ThemeMode.light,
-        home: const MyApp_Home(),
+      child: Consumer<FontSizeProvider>(
+        builder: (context, fontSizeProvider, child) => MaterialApp(
+          title: 'Alternative Impedance',
+          debugShowCheckedModeBanner: false,
+          theme: _buildLightTheme(fontSizeProvider.fontScale),
+          darkTheme: _buildDarkTheme(fontSizeProvider.fontScale),
+          themeMode: ThemeMode.light,
+          home: const MyApp_Home(),
+        ),
       ),
     );
   }
 
-  ThemeData _buildLightTheme() {
+  ThemeData _buildLightTheme([double fontScale = 1.0]) {
     const primaryColor = Color(0xFF1565C0); // Professional blue
     const secondaryColor = Color(0xFF00897B); // Teal accent
     
@@ -282,75 +300,75 @@ class MyApp extends StatelessWidget {
         ),
       ),
       
-      // Text Theme
-      textTheme: const TextTheme(
+      // Text Theme - Increased font sizes for better readability (with font scale support)
+      textTheme: TextTheme(
         headlineLarge: TextStyle(
-          fontSize: 28,
+          fontSize: 32 * fontScale,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF1E293B),
+          color: const Color(0xFF1E293B),
           letterSpacing: -0.5,
         ),
         headlineMedium: TextStyle(
-          fontSize: 24,
+          fontSize: 28 * fontScale,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1E293B),
+          color: const Color(0xFF1E293B),
           letterSpacing: -0.3,
         ),
         headlineSmall: TextStyle(
-          fontSize: 20,
+          fontSize: 24 * fontScale,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1E293B),
+          color: const Color(0xFF1E293B),
         ),
         titleLarge: TextStyle(
-          fontSize: 18,
+          fontSize: 22 * fontScale,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1E293B),
+          color: const Color(0xFF1E293B),
         ),
         titleMedium: TextStyle(
-          fontSize: 16,
+          fontSize: 18 * fontScale,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF334155),
+          color: const Color(0xFF334155),
         ),
         titleSmall: TextStyle(
-          fontSize: 14,
+          fontSize: 16 * fontScale,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF475569),
+          color: const Color(0xFF475569),
         ),
         bodyLarge: TextStyle(
-          fontSize: 16,
+          fontSize: 18 * fontScale,
           fontWeight: FontWeight.w400,
-          color: Color(0xFF334155),
+          color: const Color(0xFF334155),
         ),
         bodyMedium: TextStyle(
-          fontSize: 14,
+          fontSize: 16 * fontScale,
           fontWeight: FontWeight.w400,
-          color: Color(0xFF475569),
+          color: const Color(0xFF475569),
         ),
         bodySmall: TextStyle(
-          fontSize: 12,
+          fontSize: 14 * fontScale,
           fontWeight: FontWeight.w400,
-          color: Color(0xFF64748B),
+          color: const Color(0xFF64748B),
         ),
         labelLarge: TextStyle(
-          fontSize: 14,
+          fontSize: 16 * fontScale,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF334155),
+          color: const Color(0xFF334155),
         ),
         labelMedium: TextStyle(
-          fontSize: 12,
+          fontSize: 14 * fontScale,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF64748B),
+          color: const Color(0xFF64748B),
         ),
         labelSmall: TextStyle(
-          fontSize: 11,
+          fontSize: 13 * fontScale,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF94A3B8),
+          color: const Color(0xFF94A3B8),
         ),
       ),
     );
   }
 
-  ThemeData _buildDarkTheme() {
+  ThemeData _buildDarkTheme([double fontScale = 1.0]) {
     const primaryColor = Color(0xFF42A5F5);
     
     return ThemeData(

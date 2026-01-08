@@ -1,9 +1,10 @@
-/// Home Screen - Alternative Impedance
-/// Main navigation screen with modern UI
+// Home Screen - Alternative Impedance
+// Main navigation screen with modern UI
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/impedance_provider.dart';
+import '../utils/toast_manager.dart';
 import 'measurement_screen.dart';
 import 'new_impedance_screen.dart';
 import 'cloud_data_screen.dart';
@@ -63,20 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
       provider.initializeBle();
       provider.onMessage = (message) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.white, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(message)),
-                ],
-              ),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
+          toastManager.showInfo(context, message);
         }
       };
     });

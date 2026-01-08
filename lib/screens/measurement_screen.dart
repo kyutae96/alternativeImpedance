@@ -8,6 +8,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/impedance_provider.dart';
 import '../widgets/ble_status_card.dart';
 import '../utils/constants.dart';
+import '../utils/toast_manager.dart';
+import '../services/cache_service.dart';
 import 'ble_scan_dialog.dart';
 
 class MeasurementScreen extends StatefulWidget {
@@ -385,17 +387,18 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   Widget _buildMeasurementButton(ImpedanceProvider provider) {
     final canStart = _canStartMeasurement(provider);
+    
+    // 측정 시작 버튼 - 초록색
+    const startColor = Color(0xFF10B981); // Green
+    const startColorDark = Color(0xFF059669); // Dark Green
 
     return Container(
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
         gradient: canStart
-            ? LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                ],
+            ? const LinearGradient(
+                colors: [startColor, startColorDark], // 초록색
               )
             : null,
         color: canStart ? null : Colors.grey.shade300,
@@ -403,7 +406,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         boxShadow: canStart
             ? [
                 BoxShadow(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                  color: startColor.withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
@@ -825,9 +828,26 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                 _buildSelectionGuide(isChannel1to16),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            // X/Y축 라벨
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'X: 저항값 (Ω)  |  Y: 임피던스 Raw값',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             SizedBox(
-              height: 220,
+              height: 280, // 그래프 높이 증가 (220 → 280)
               child: spots.isEmpty
                   ? Center(
                       child: Column(
@@ -893,13 +913,13 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                               show: true,
                               getDotPainter: (spot, percent, barData, index) {
                                 Color dotColor = isChannel1to16 ? const Color(0xFF6366F1) : const Color(0xFFF97316);
-                                double radius = 4;
+                                double radius = 6; // 기본 점 크기 (적절한 크기로 조정)
                                 if (index == selectedMin) {
                                   dotColor = const Color(0xFF10B981);
-                                  radius = 7;
+                                  radius = 10; // 선택된 점은 더 크게
                                 } else if (index == selectedMax) {
                                   dotColor = const Color(0xFF3B82F6);
-                                  radius = 7;
+                                  radius = 10;
                                 }
                                 return FlDotCirclePainter(
                                   radius: radius,
@@ -922,6 +942,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                           ),
                         ],
                         lineTouchData: LineTouchData(
+                          touchSpotThreshold: 12, // 터치 감지 영역 축소 (더 정확한 선택 가능)
                           touchTooltipData: LineTouchTooltipData(
                             fitInsideHorizontally: true,
                             fitInsideVertically: true,
@@ -929,7 +950,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                               return touchedSpots.map((spot) {
                                 return LineTooltipItem(
                                   '${spot.x.toInt()}Hz\n${spot.y.toStringAsFixed(2)}',
-                                  const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 12),
+                                  const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14),
                                 );
                               }).toList();
                             },
@@ -1320,24 +1341,17 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       setState(() => _isLoading = true);
       final firebaseSuccess = await provider.saveCalibrationToFirebase();
       setState(() => _isLoading = false);
-      _showMessage(firebaseSuccess ? '저장이 완료되었습니다.' : '저장에 실패했습니다.');
+      
+      if (firebaseSuccess) {
+        cacheService.invalidateCalibrationCache();
+        toastManager.showSuccess(context, '저장이 완료되었습니다.');
+      } else {
+        toastManager.showError(context, '저장에 실패했습니다.');
+      }
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    toastManager.showInfo(context, message);
   }
 }
