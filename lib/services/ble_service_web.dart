@@ -242,8 +242,22 @@ class BleServiceWeb extends BleServiceInterface {
     notifyListeners();
   }
 
+  // 재시도 관련 설정
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(milliseconds: 1500);
+  static const Duration _serviceDiscoveryDelay = Duration(milliseconds: 500);
+  
+  bool _isConnecting = false;
+
   @override
   Future<bool> connectToDevice(BleDeviceInfo deviceInfo) async {
+    if (_isConnecting) {
+      debugPrint('Connection already in progress, ignoring...');
+      return false;
+    }
+    
+    _isConnecting = true;
+    
     try {
       _connectionState = BleConnectionState.connecting;
       notifyListeners();
@@ -255,90 +269,165 @@ class BleServiceWeb extends BleServiceInterface {
         device = deviceInfo.nativeDevice as BluetoothDevice;
       } else {
         _setError('유효하지 않은 기기입니다.');
+        _isConnecting = false;
         return false;
       }
 
       _connectedDevice = device;
 
-      // Set disconnection handler
-      device.ongattserverdisconnected = ((web.Event event) {
-        debugPrint('GATT Server disconnected');
-        _handleDisconnection();
-        onMessage?.call('기기 연결이 해제되었습니다.');
-      }).toJS;
-
-      // Connect to GATT server
-      _connectionState = BleConnectionState.connecting;
-      notifyListeners();
-
       final gatt = device.gatt;
       if (gatt == null) {
         _setError('GATT 서버를 찾을 수 없습니다.');
+        _isConnecting = false;
         return false;
       }
 
-      debugPrint('Connecting to GATT server...');
-      _gattServer = await gatt.connect().toDart;
-      debugPrint('GATT server connected');
-
-      _connectionState = BleConnectionState.discovering;
-      notifyListeners();
-      onMessage?.call('서비스 검색 중...');
-
-      // Get Nordic UART Service
-      debugPrint('Getting primary service: ${AppConstants.bleServiceUuid}');
-      final service = await _gattServer!
-          .getPrimaryService(AppConstants.bleServiceUuid.toLowerCase().toJS)
-          .toDart;
-      debugPrint('Service found: ${service.uuid}');
-
-      // Get TX Characteristic (Client to Server - Write)
-      debugPrint('Getting TX characteristic: ${AppConstants.bleCharacteristicTxUuid}');
-      _txCharacteristic = await service
-          .getCharacteristic(AppConstants.bleCharacteristicTxUuid.toLowerCase().toJS)
-          .toDart;
-      debugPrint('TX characteristic found');
-
-      // Get RX Characteristic (Server to Client - Notify)
-      debugPrint('Getting RX characteristic: ${AppConstants.bleCharacteristicRxUuid}');
-      _rxCharacteristic = await service
-          .getCharacteristic(AppConstants.bleCharacteristicRxUuid.toLowerCase().toJS)
-          .toDart;
-      debugPrint('RX characteristic found');
-
-      // Start notifications on RX characteristic
-      debugPrint('Starting notifications...');
-      await _rxCharacteristic!.startNotifications().toDart;
-      
-      // Set notification handler
-      _rxCharacteristic!.oncharacteristicvaluechanged = ((web.Event event) {
+      // 재시도 로직으로 연결 시도
+      for (int attempt = 1; attempt <= _maxRetries; attempt++) {
         try {
-          final target = (event.target as JSObject?) as BluetoothRemoteGATTCharacteristic?;
-          if (target?.value != null) {
-            final dataView = target!.value!;
-            final bytes = _dataViewToBytes(dataView);
-            debugPrint('Notification received: ${_bytesToHex(bytes)}');
-            _handlePacket(bytes);
+          debugPrint('Connection attempt $attempt/$_maxRetries...');
+          onMessage?.call('연결 시도 $attempt/$_maxRetries...');
+          
+          // Set disconnection handler (연결 시도 전에 설정)
+          bool wasDisconnected = false;
+          device.ongattserverdisconnected = ((web.Event event) {
+            debugPrint('GATT Server disconnected during attempt $attempt');
+            wasDisconnected = true;
+            // 연결 완료 후에만 handleDisconnection 호출
+            if (_connectionState == BleConnectionState.ready) {
+              _handleDisconnection();
+              onMessage?.call('기기 연결이 해제되었습니다.');
+            }
+          }).toJS;
+
+          // Connect to GATT server
+          debugPrint('Connecting to GATT server...');
+          _gattServer = await gatt.connect().toDart;
+          debugPrint('GATT server connected');
+          
+          // 연결 후 안정화를 위한 딜레이
+          await Future.delayed(_serviceDiscoveryDelay);
+          
+          // 연결이 끊어졌는지 확인
+          if (wasDisconnected || !_gattServer!.connected) {
+            debugPrint('Connection lost after connect, retrying...');
+            if (attempt < _maxRetries) {
+              await Future.delayed(_retryDelay);
+              continue;
+            }
+            throw Exception('GATT 연결이 불안정합니다.');
           }
+
+          _connectionState = BleConnectionState.discovering;
+          notifyListeners();
+          onMessage?.call('서비스 검색 중...');
+
+          // Get Nordic UART Service with retry
+          debugPrint('Getting primary service: ${AppConstants.bleServiceUuid}');
+          BluetoothRemoteGATTService? service;
+          
+          for (int serviceAttempt = 1; serviceAttempt <= 3; serviceAttempt++) {
+            try {
+              if (!_gattServer!.connected) {
+                throw Exception('GATT disconnected before service discovery');
+              }
+              service = await _gattServer!
+                  .getPrimaryService(AppConstants.bleServiceUuid.toLowerCase().toJS)
+                  .toDart;
+              break;
+            } catch (e) {
+              debugPrint('Service discovery attempt $serviceAttempt failed: $e');
+              if (serviceAttempt < 3) {
+                await Future.delayed(const Duration(milliseconds: 300));
+              } else {
+                rethrow;
+              }
+            }
+          }
+          
+          if (service == null) {
+            throw Exception('서비스를 찾을 수 없습니다.');
+          }
+          debugPrint('Service found: ${service.uuid}');
+
+          // 서비스 발견 후 추가 딜레이
+          await Future.delayed(const Duration(milliseconds: 200));
+
+          // Get TX Characteristic (Client to Server - Write)
+          debugPrint('Getting TX characteristic: ${AppConstants.bleCharacteristicTxUuid}');
+          _txCharacteristic = await service
+              .getCharacteristic(AppConstants.bleCharacteristicTxUuid.toLowerCase().toJS)
+              .toDart;
+          debugPrint('TX characteristic found');
+
+          // Get RX Characteristic (Server to Client - Notify)
+          debugPrint('Getting RX characteristic: ${AppConstants.bleCharacteristicRxUuid}');
+          _rxCharacteristic = await service
+              .getCharacteristic(AppConstants.bleCharacteristicRxUuid.toLowerCase().toJS)
+              .toDart;
+          debugPrint('RX characteristic found');
+
+          // Start notifications on RX characteristic
+          debugPrint('Starting notifications...');
+          await _rxCharacteristic!.startNotifications().toDart;
+          
+          // Set notification handler
+          _rxCharacteristic!.oncharacteristicvaluechanged = ((web.Event event) {
+            try {
+              final target = (event.target as JSObject?) as BluetoothRemoteGATTCharacteristic?;
+              if (target?.value != null) {
+                final dataView = target!.value!;
+                final bytes = _dataViewToBytes(dataView);
+                debugPrint('Notification received: ${_bytesToHex(bytes)}');
+                _handlePacket(bytes);
+              }
+            } catch (e) {
+              debugPrint('Error handling notification: $e');
+            }
+          }).toJS;
+          debugPrint('Notifications started');
+
+          // Update state
+          _deviceName = device.name ?? 'Unknown Device';
+          _deviceAddress = device.id;
+          _connectionState = BleConnectionState.ready;
+          _programState = BleProgramState.notStarted;
+          _isConnecting = false;
+          notifyListeners();
+
+          onMessage?.call('✅ ${_deviceName}에 연결되었습니다!');
+          return true;
+          
         } catch (e) {
-          debugPrint('Error handling notification: $e');
+          debugPrint('Attempt $attempt failed: $e');
+          
+          if (attempt < _maxRetries) {
+            onMessage?.call('연결 실패, 재시도 중... ($attempt/$_maxRetries)');
+            // 연결 정리
+            try {
+              _gattServer?.disconnect();
+            } catch (_) {}
+            _gattServer = null;
+            _txCharacteristic = null;
+            _rxCharacteristic = null;
+            
+            await Future.delayed(_retryDelay);
+          } else {
+            // 마지막 시도도 실패
+            throw e;
+          }
         }
-      }).toJS;
-      debugPrint('Notifications started');
-
-      // Update state
-      _deviceName = device.name ?? 'Unknown Device';
-      _deviceAddress = device.id;
-      _connectionState = BleConnectionState.ready;
-      _programState = BleProgramState.notStarted;
-      notifyListeners();
-
-      onMessage?.call('✅ ${_deviceName}에 연결되었습니다!');
-      return true;
+      }
+      
+      // 모든 재시도 실패
+      _setError('연결 실패: 최대 재시도 횟수 초과');
+      _isConnecting = false;
+      return false;
 
     } catch (e) {
       debugPrint('Connection error: $e');
       _setError('기기 연결 실패: $e');
+      _isConnecting = false;
       await disconnect();
       return false;
     }
