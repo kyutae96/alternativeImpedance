@@ -1,16 +1,338 @@
-# alternative_impedance
+# Alternative Impedance
 
-A new Flutter project.
+<p align="center">
+  <img src="assets/icons/app_icon.png" alt="App Icon" width="120" height="120">
+</p>
 
-## Getting Started
+<p align="center">
+  <strong>인공 와우(Cochlear Implant) 전극 임피던스 측정 및 진단 앱</strong>
+</p>
 
-This project is a starting point for a Flutter application.
+<p align="center">
+  <a href="#주요-기능">주요 기능</a> •
+  <a href="#스크린샷">스크린샷</a> •
+  <a href="#설치-방법">설치 방법</a> •
+  <a href="#사용-방법">사용 방법</a> •
+  <a href="#기술-스택">기술 스택</a>
+</p>
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 📋 개요
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+**Alternative Impedance**는 인공 와우(Cochlear Implant) 장치의 전극 임피던스를 BLE(Bluetooth Low Energy)를 통해 측정하고, 캘리브레이션 데이터를 기반으로 전극 상태를 진단하는 Flutter 기반 모바일 애플리케이션입니다.
+
+### 주요 목적
+- 🔬 **32채널 전극 임피던스 실시간 측정**
+- 📊 **캘리브레이션 기반 정확한 진단**
+- 💾 **Firebase 클라우드 데이터 저장 및 관리**
+- 📈 **측정 데이터 시각화 및 분석**
+
+---
+
+## ✨ 주요 기능
+
+### 1. 🔗 BLE 연결 및 측정
+- Nordic UART Service (NUS) 프로토콜 기반 BLE 통신
+- 내부기 ID 자동 인식
+- 32채널 (CH 1-16, CH 17-32) 동시 측정
+- 실시간 측정 데이터 수신 및 표시
+
+### 2. 📐 캘리브레이션
+- **2포인트 캘리브레이션 시스템**
+  - Min 포인트: 최소 저항값 설정
+  - Max 포인트: 최대 저항값 설정
+- **기울기(Slope) / 절편(Intercept) 자동 계산**
+  ```
+  Slope = (R_Max - R_Min) / (Imp_Max - Imp_Min)
+  Intercept = R_Min - (Slope × Imp_Min)
+  ```
+- 채널 그룹별 독립 캘리브레이션 (CH 1-16, CH 17-32)
+
+### 3. 🩺 전극 상태 진단
+| 상태 | 조건 | 의미 |
+|------|------|------|
+| ✅ **정상** | Min ≤ RawValue ≤ Max | 전극 정상 작동 |
+| 🔵 **쇼트** | RawValue < Min | 전극 단락 (Short Circuit) |
+| 🔴 **오픈** | RawValue > Max | 전극 개방 (Open Circuit) |
+
+### 4. ☁️ 클라우드 데이터 관리
+- **Firebase Firestore 연동**
+- 캘리브레이션 데이터 저장/조회
+- 측정 결과 저장/조회
+- 내부기 ID 기반 데이터 매칭
+- 날짜/ID별 정렬 및 검색
+
+### 5. 📊 데이터 시각화
+- 채널별 임피던스 그래프 (Line Chart)
+- 측정 결과 막대 그래프 (Bar Chart)
+- 상태별 색상 구분 (정상: 녹색, 쇼트: 파랑, 오픈: 빨강)
+- 터치 인터랙션 지원
+
+### 6. 📤 데이터 내보내기
+- Excel (.xlsx) 파일 내보내기
+- 공유 기능 지원
+
+---
+
+## 📱 화면 구성
+
+### 탭 구조
+
+| 탭 | 설명 |
+|-----|------|
+| **🏠 홈** | 앱 개요 및 BLE 연결 상태 |
+| **📏 측정** | BLE 연결, 임피던스 측정, 캘리브레이션 |
+| **🩺 진단** | 측정 데이터 진단 및 Firebase 저장 |
+| **☁️ 클라우드** | 저장된 데이터 조회 및 상세 분석 |
+| **⚙️ 설정** | 앱 설정 및 Firebase 컬렉션 관리 |
+
+---
+
+## 🔧 기술 스택
+
+### Framework & Language
+- **Flutter** 3.35.4
+- **Dart** 3.9.2
+
+### 상태 관리
+- **Provider** 6.1.5+1
+
+### Backend & Database
+- **Firebase Core** 3.6.0
+- **Cloud Firestore** 5.4.3
+
+### BLE 통신
+- **flutter_blue_plus** 1.36.8
+
+### 차트 & 시각화
+- **fl_chart** 0.69.2
+
+### 데이터 처리
+- **excel** 4.0.6
+- **path_provider** 2.1.5
+- **share_plus** 10.1.4
+- **shared_preferences** 2.5.3
+
+---
+
+## 📁 프로젝트 구조
+
+```
+lib/
+├── main.dart                 # 앱 진입점
+├── models/
+│   ├── ble_device.dart       # BLE 디바이스 모델
+│   └── impedance_data.dart   # 임피던스 데이터 모델
+├── providers/
+│   └── impedance_provider.dart # 상태 관리 프로바이더
+├── screens/
+│   ├── home_screen.dart      # 홈 화면
+│   ├── measurement_screen.dart # 측정 화면
+│   ├── new_impedance_screen.dart # 진단 화면
+│   ├── cloud_data_screen.dart # 클라우드 데이터 화면
+│   ├── settings_screen.dart  # 설정 화면
+│   ├── ble_scan_dialog.dart  # BLE 스캔 다이얼로그
+│   └── chart_analysis_screen.dart # 차트 분석 화면
+├── services/
+│   ├── ble_service.dart      # BLE 통신 서비스
+│   ├── firebase_service.dart # Firebase 서비스
+│   ├── excel_service.dart    # Excel 내보내기 서비스
+│   └── cache_service.dart    # 캐시 서비스
+├── utils/
+│   ├── constants.dart        # 앱 상수 정의
+│   ├── font_size_provider.dart # 폰트 크기 관리
+│   └── toast_manager.dart    # 토스트 메시지 관리
+└── widgets/
+    ├── ble_status_card.dart  # BLE 상태 카드
+    ├── electrode_status_grid.dart # 전극 상태 그리드
+    ├── impedance_chart.dart  # 임피던스 차트
+    └── measurement_params_card.dart # 측정 파라미터 카드
+```
+
+---
+
+## ⚙️ 설치 방법
+
+### 사전 요구사항
+- Flutter SDK 3.35.4 이상
+- Dart SDK 3.9.2 이상
+- Android Studio / VS Code
+- Firebase 프로젝트 설정
+
+### 설치 단계
+
+1. **레포지토리 클론**
+   ```bash
+   git clone https://github.com/kyutae96/alternativeImpedance.git
+   cd alternativeImpedance
+   ```
+
+2. **의존성 설치**
+   ```bash
+   flutter pub get
+   ```
+
+3. **Firebase 설정**
+   - Firebase Console에서 프로젝트 생성
+   - `google-services.json`을 `android/app/` 디렉토리에 추가
+   - Firestore Database 생성
+
+4. **앱 실행**
+   ```bash
+   flutter run
+   ```
+
+### APK 빌드
+```bash
+flutter build apk --release
+```
+
+---
+
+## 📖 사용 방법
+
+### 1. BLE 연결
+1. **측정** 탭으로 이동
+2. **BLE 연결** 버튼 클릭
+3. 주변 기기 스캔 후 대상 기기 선택
+4. 연결 완료 시 내부기 ID 자동 표시
+
+### 2. 캘리브레이션
+1. **Min 포인트 선택**
+   - 최소 저항값에서 임피던스 측정
+   - 그래프에서 포인트 선택 후 **Min 설정**
+2. **Max 포인트 선택**
+   - 최대 저항값에서 임피던스 측정
+   - 그래프에서 포인트 선택 후 **Max 설정**
+3. **캘리브레이션 저장**
+   - 계산된 기울기/절편 확인
+   - Firebase에 저장
+
+### 3. 임피던스 측정 및 진단
+1. 실제 측정 대상에서 임피던스 측정
+2. **진단** 탭에서 결과 확인
+3. 정상/쇼트/오픈 상태 자동 판정
+4. Firebase에 측정 결과 저장
+
+### 4. 데이터 조회
+1. **클라우드** 탭에서 저장된 데이터 조회
+2. 캘리브레이션/측정 결과 선택
+3. 상세 보기에서 계산 과정 확인
+
+---
+
+## 📊 측정 파라미터
+
+| 파라미터 | 기본값 | 설명 |
+|----------|--------|------|
+| Repeat Count | 10 | 측정 반복 횟수 |
+| Channel Selection | 255 | 전체 채널 선택 |
+| Narrow Pulse Width | 15 μs | 좁은 펄스 폭 |
+| Wide Pulse Width | 25 μs | 넓은 펄스 폭 |
+| Stimulation Level | 280 | 자극 레벨 |
+
+---
+
+## 🔌 BLE 프로토콜
+
+### Nordic UART Service (NUS) UUID
+| 타입 | UUID |
+|------|------|
+| Service | `6e400001-b5a3-f393-e0a9-e50e24dcca9e` |
+| TX Characteristic | `6e400002-b5a3-f393-e0a9-e50e24dcca9e` |
+| RX Characteristic | `6e400003-b5a3-f393-e0a9-e50e24dcca9e` |
+
+### Command Codes
+| 명령 | 코드 | 설명 |
+|------|------|------|
+| Program Start | `0x60` | 프로그램 시작 |
+| Program End | `0x61` | 프로그램 종료 |
+| Impedance Measurement | `0x62` | 임피던스 측정 |
+| Inner Device ID | `0x91` | 내부기 ID 요청 |
+
+---
+
+## 📐 저항값 매핑
+
+채널별 저항값 (CH 1-16, CH 17-32 동일):
+
+| 채널 | 저항값 (Ω) | 채널 | 저항값 (Ω) |
+|------|-----------|------|-----------|
+| 1 | 300 | 9 | 5000 |
+| 2 | 500 | 10 | 6000 |
+| 3 | 1000 | 11 | 7000 |
+| 4 | 1500 | 12 | 8000 |
+| 5 | 2000 | 13 | 9000 |
+| 6 | 2500 | 14 | 10000 |
+| 7 | 3000 | 15 | 12000 |
+| 8 | 4000 | 16 | 15000 |
+
+---
+
+## 🔐 Firebase 컬렉션
+
+### 캘리브레이션 데이터
+```
+Collection: alternativeImpedanceParam
+Document: {
+  innerID: String,
+  date: String,
+  combin1At1to16Min: String,
+  combin1At1to16Max: String,
+  combin1At1to16Inclin: String,  // Slope
+  combin1At1to16Cap: String,     // Intercept
+  combin1At17to32Min: String,
+  combin1At17to32Max: String,
+  combin1At17to32Inclin: String,
+  combin1At17to32Cap: String,
+  ...
+}
+```
+
+### 측정 결과 데이터
+```
+Collection: testNewImpedanceParam
+Document: {
+  innerID: String,
+  date: String,
+  measurements: Map<String, String>  // {"0": "1234", "1": "전극 쇼트 (5.2)", ...}
+}
+```
+
+---
+
+## 📝 버전 히스토리
+
+### v1.0.0 (2024-01-06)
+- 초기 릴리즈
+- BLE 연결 및 32채널 임피던스 측정
+- 2포인트 캘리브레이션 시스템
+- 전극 상태 진단 (정상/쇼트/오픈)
+- Firebase 클라우드 연동
+- 데이터 시각화 및 Excel 내보내기
+- 글자 크기 조절 기능
+
+---
+
+## 🤝 기여
+
+버그 리포트, 기능 제안, Pull Request를 환영합니다!
+
+---
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+---
+
+## 📞 문의
+
+프로젝트 관련 문의사항은 Issues를 통해 남겨주세요.
+
+---
+
+<p align="center">
+  Made with ❤️ using Flutter
+</p>
